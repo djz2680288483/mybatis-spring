@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:tx="http://www.springframework.org/schema/tx" xmlns:aop="http://www.springframework.org/schema/aop"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans
+       http://www.springframework.org/schema/beans/spring-beans.xsd
+       http://www.springframework.org/schema/tx
+       http://www.springframework.org/schema/tx/spring-tx.xsd
+       http://www.springframework.org/schema/aop
+       https://www.springframework.org/schema/aop/spring-aop.xsd">
+
+<!--    spring提供的jdbc-->
+<bean id="datasource" class="org.springframework.jdbc.datasource.DriverManagerDataSource">
+    <property name="driverClassName" value="com.mysql.jdbc.Driver"/>
+    <property name="url" value="jdbc:mysql://localhost:3306/djz?useUnicode=true&amp;characterEncoding=UTF-8&amp;serverTimezone=GMT&amp;useSSL=true"/>
+    <property name="username" value="root"/>
+    <property name="password" value="root"/>
+</bean>
+<!--sqlSesssionFactory-->
+    <bean id="sqlSesssionFactory"  class="org.mybatis.spring.SqlSessionFactoryBean">
+        <property name="dataSource" ref="datasource"/>
+<!--        绑定mybatis配置文件-->
+        <property name="configLocation" value="classpath:mybatis-config.xml"/>
+        <property name="mapperLocations" value="classpath:com/djz/mapper/*.xml"/>
+    </bean>
+<!--    SqlSessionTemplate 就是我们所使用的SqlSession-->
+<bean id="SqlSession" class="org.mybatis.spring.SqlSessionTemplate">
+<!--    只能使用构造器注入SeqSessionFactory ,因为它没有set方法-->
+    <constructor-arg index="0" ref="sqlSesssionFactory"/>
+</bean>
+
+    <bean id="personMapper" class="com.djz.service.PersonMapperImpl">
+        <property name="sqlSession" ref="SqlSession"/>
+    </bean>
+<!--    配置声明式事务-->
+    <bean id="transactionManger" class="org.springframework.jdbc.datasource.DataSourceTransactionManager">
+       <constructor-arg  name="dataSource" ref="datasource"/>
+    </bean>
+<!--    结合Aop实现事务的织入-->
+<!--    配置事务的通知-->
+<tx:advice id="txAdvice" transaction-manager="transactionManger">
+<!--给哪些方法配置事务-->
+<!--    配置事务的传播特性-->
+    <tx:attributes>
+        <tx:method name="add" propagation="REQUIRED"/>
+        <tx:method name="delete" propagation="REQUIRED"/>
+        <tx:method name="select" read-only="true"/>
+        <tx:method name="update" propagation="REQUIRED"/>
+        <tx:method name="*" propagation="REQUIRED"/>
+    </tx:attributes>
+</tx:advice>
+<!--    配置事务切入-->
+    <aop:config>
+        <aop:pointcut id="txPointcut" expression="execution(* com.djz.service.*.*(..))"/>
+     <aop:advisor advice-ref="txAdvice" pointcut-ref="txPointcut"/>
+    </aop:config>
+
+</beans>
